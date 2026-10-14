@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Demandas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div>
+                <h1>Gestão de Demandas</h1>
+                <p class="subtitle">Cadastro e consulta de demandas internas</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+                <div class="messages">
+                    {% for categoria, mensagem in mensagens %}
+                        <div class="message {% if categoria == 'success' %}message-success{% else %}message-error{% endif %}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="actions">
+            <button type="button" class="button button-primary" id="abrir-modal">
+                + Cadastrar demanda
+            </button>
+
+            <a href="{{ url_for('exportar_csv') }}" class="button button-secondary">
+                Exportar dados para Power BI
+            </a>
+        </div>
+
+        <section aria-labelledby="resumo-titulo">
+            <h2 class="section-title" id="resumo-titulo">Resumo das demandas</h2>
+
+            <div class="stats">
+                <article class="stat-card">
+                    <div class="stat-label">Total de demandas</div>
+                    <div class="stat-value">{{ total_tickets }}</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-label">Demandas novas</div>
+                    <div class="stat-value">{{ tickets_novos }}</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-label">Prioridade alta</div>
+                    <div class="stat-value">{{ prioridade_alta }}</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-label">Setores atendidos</div>
+                    <div class="stat-value">{{ setores_atendidos }}</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="table-card" aria-labelledby="lista-titulo">
+            <div class="table-header">
+                <h2 id="lista-titulo">Demandas cadastradas</h2>
+                <p>Consulte os registros existentes no sistema.</p>
+            </div>
+
+            {% if tickets %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Título</th>
+                                <th>Descrição</th>
+                                <th>Data</th>
+                                <th>Setor</th>
+                                <th>Status</th>
+                                <th>Prioridade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ticket in tickets %}
+                                <tr>
+                                    <td class="id-cell">{{ ticket["id"] }}</td>
+                                    <td class="title-cell">{{ ticket["titulo"] }}</td>
+                                    <td class="description">{{ ticket["descricao"] }}</td>
+                                    <td class="date-cell">{{ ticket["data_solicitacao"] }}</td>
+                                    <td class="sector-cell">{{ ticket["setor"] }}</td>
+                                    <td>
+                                        <span class="badge badge-status">
+                                            {{ ticket["status"] }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if ticket["prioridade"] == "Alta" %}
+                                            <span class="badge badge-high">Alta</span>
+                                        {% else %}
+                                            <span class="badge badge-normal">Normal</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Nenhuma demanda cadastrada ainda.</p>
+                    <p>Use o botão acima para registrar a primeira demanda.</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <dialog id="modal-cadastro">
+        <div class="modal-header">
+            <h2>Cadastrar demanda</h2>
+            <button
+                type="button"
+                class="close-button"
+                id="fechar-modal"
+                aria-label="Fechar formulário">
+                &times;
+            </button>
+        </div>
+
+        <form action="{{ url_for('cadastrar') }}" method="POST" class="form-body">
+            <div class="form-group">
+                <label for="titulo">Título *</label>
+                <input
+                    type="text"
+                    id="titulo"
+                    name="titulo"
+                    maxlength="200"
+                    placeholder="Dê um título à necessidade..."
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label for="descricao">Descrição *</label>
+                <textarea
+                    id="descricao"
+                    name="descricao"
+                    placeholder="Dê uma descrição à necessidade..."
+                    required></textarea>
+                <span class="form-help">
+                    A prioridade será Alta se a descrição contiver a palavra “urgente” ou “erro”.
+                </span>
+            </div>
+
+            <div class="form-group">
+                <label for="data_solicitacao">Data da solicitação *</label>
+                <input
+                    type="date"
+                    id="data_solicitacao"
+                    name="data_solicitacao"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label for="setor">Setor *</label>
+                <select id="setor" name="setor" required>
+                    <option value="" disabled selected>Selecione um setor</option>
+                    <option value="TI">TI</option>
+                    <option value="Recursos Humanos">Recursos Humanos</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Vendas">Vendas</option>
+                </select>
+            </div>
+
+            <div class="form-footer">
+                <button type="button" class="button button-cancel" id="cancelar-modal">
+                    Cancelar
+                </button>
+                <button type="submit" class="button button-primary">
+                    Cadastrar demanda
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <footer>
+        Sistema de Gestão de Demandas
+    </footer>
+
+    <script>
+        const modal = document.getElementById("modal-cadastro");
+        const botaoAbrir = document.getElementById("abrir-modal");
+        const botaoFechar = document.getElementById("fechar-modal");
+        const botaoCancelar = document.getElementById("cancelar-modal");
+
+        function abrirModal() {
+            modal.showModal();
+        }
+
+        function fecharModal() {
+            modal.close();
+        }
+
+        botaoAbrir.addEventListener("click", abrirModal);
+        botaoFechar.addEventListener("click", fecharModal);
+        botaoCancelar.addEventListener("click", fecharModal);
+
+        modal.addEventListener("click", function (evento) {
+            if (evento.target === modal) {
+                fecharModal();
+            }
+        });
+    </script>
+</body>
+</html>

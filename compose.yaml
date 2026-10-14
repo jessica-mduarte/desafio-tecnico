@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    container_name: gestao-demandas
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./database.db:/app/database.db
+    restart: unless-stopped
